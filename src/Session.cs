@@ -19,6 +19,7 @@ namespace Amqp
 {
     using System;
     using Amqp.Framing;
+    using Amqp.Handler;
     using Amqp.Types;
 
     /// <summary>
@@ -46,6 +47,8 @@ namespace Amqp
         Link[] localLinks;
         Link[] remoteLinks;
         State state;
+        private readonly object lockObject = new object();
+
 
         // incoming flow control
         SequenceNumber incomingDeliveryId;
@@ -103,7 +106,7 @@ namespace Amqp
 
         object ThisLock
         {
-            get { return this; }
+            get { return this.lockObject; }
         }
 
         internal ushort Channel
@@ -252,6 +255,12 @@ namespace Amqp
 
         internal void OnBegin(ushort remoteChannel, Begin begin)
         {
+            IHandler handler = this.connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.SessionRemoteOpen))
+            {
+                handler.Handle(Event.Create(EventId.SessionRemoteOpen, this.connection, this, context: begin));
+            }
+
             lock (this.ThisLock)
             {
                 if (this.state == State.BeginSent)
@@ -285,6 +294,12 @@ namespace Amqp
 
         internal bool OnEnd(End end)
         {
+            IHandler handler = this.connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.SessionRemoteClose))
+            {
+                handler.Handle(Event.Create(EventId.SessionRemoteClose, this.connection, this, context: end));
+            }
+
             this.Error = end.Error;
 
             lock (this.ThisLock)
@@ -560,7 +575,8 @@ namespace Amqp
                     Link = link,
                     Tag = transfer.DeliveryTag,
                     Settled = transfer.Settled,
-                    State = transfer.State
+                    State = transfer.State,
+                    Batchable = transfer.Batchable
                 };
 
                 if (!delivery.Settled)
@@ -650,12 +666,25 @@ namespace Amqp
 
         void SendBegin(Begin begin)
         {
+            IHandler handler = this.connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.SessionLocalOpen))
+            {
+                handler.Handle(Event.Create(EventId.SessionLocalOpen, this.connection, this, context: begin));
+            }
+
             this.connection.SendCommand(this.channel, begin);
         }
 
         void SendEnd()
         {
-            this.connection.SendCommand(this.channel, new End());
+            End end = new End();
+            IHandler handler = this.connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.SessionLocalClose))
+            {
+                handler.Handle(Event.Create(EventId.SessionLocalClose, this.connection, this, context: end));
+            }
+
+            this.connection.SendCommand(this.channel, end);
         }
 
         void WriteDelivery(Delivery delivery)

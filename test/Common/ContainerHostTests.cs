@@ -24,6 +24,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amqp;
 using Amqp.Framing;
+using Amqp.Handler;
 using Amqp.Listener;
 using Amqp.Sasl;
 using Amqp.Types;
@@ -638,6 +639,70 @@ namespace Test.Amqp
         }
 
         [TestMethod]
+        public void ContainerHostDeliveryHandlerTest()
+        {
+            string name = "ContainerHostSendDeliveryHandlerTest";
+
+            IDelivery sendDelivery = null;
+            IDelivery receiveDelivery = null;
+            IDelivery listenerDelivery = null;
+            var clientHandler = new TestHandler(e =>
+            {
+                if (e.Id == EventId.SendDelivery)
+                {
+                    sendDelivery = (IDelivery)e.Context;
+                    sendDelivery.Batchable = true;
+                    sendDelivery.Tag = new byte[] { 8, 79 };
+                }
+                else if (e.Id == EventId.ReceiveDelivery)
+                {
+                    receiveDelivery = (IDelivery)e.Context;
+                }
+            });
+            var listenerHandler = new TestHandler(e =>
+            {
+                if (e.Id == EventId.SendDelivery)
+                {
+                    ((IDelivery)e.Context).Tag = Guid.NewGuid().ToByteArray();
+                }
+                else if (e.Id == EventId.ReceiveDelivery)
+                {
+                    listenerDelivery = (IDelivery)e.Context;
+                }
+            });
+
+            List<Message> messages = new List<Message>();
+            this.host.RegisterMessageProcessor(name, new TestMessageProcessor(10, messages));
+            this.host.Listeners[0].HandlerFactory = a => listenerHandler;
+
+            var connection = new Connection(Address, clientHandler);
+            var session = new Session(connection);
+            var sender = new SenderLink(session, "send-link", name);
+            sender.Send(new Message(name));
+            sender.Close();
+
+            this.host.RegisterMessageSource(name, new TestMessageSource(new Queue<Message>(messages)));
+            var receiver = new ReceiverLink(session, "recv-link", name);
+            var message = receiver.Receive();
+            receiver.Accept(message);
+            session.Close();
+            connection.Close();
+
+            Assert.IsTrue(sendDelivery != null);
+            Assert.AreEqual(sendDelivery.Batchable, true);
+            Assert.AreEqual((byte)8, sendDelivery.Tag[0]);
+            Assert.AreEqual((byte)79, sendDelivery.Tag[1]);
+
+            Assert.IsTrue(listenerDelivery != null);
+            Assert.AreEqual(listenerDelivery.Batchable, true);
+            Assert.AreEqual((byte)8, listenerDelivery.Tag[0]);
+            Assert.AreEqual((byte)79, listenerDelivery.Tag[1]);
+
+            Assert.IsTrue(receiveDelivery != null);
+            Assert.AreEqual(16, receiveDelivery.Tag.Length);
+        }
+
+        [TestMethod]
         public void DuplicateLinkNameSameSessionTest()
         {
             string name = "DuplicateLinkNameSameSessionTest";
@@ -1090,6 +1155,26 @@ namespace Test.Amqp
             }
         }
 #endif
+
+        [TestMethod]
+        public void EncodeDecodeMessageWithAmqpValueTest()
+        {
+            string name = "EncodeDecodeMessageWithAmqpValueTest";
+            Queue<Message> messages = new Queue<Message>();
+            messages.Enqueue(new Message("test") { Properties = new Properties() { MessageId = name } });
+
+            var source = new TestMessageSource(messages);
+            this.host.RegisterMessageSource(name, source);
+
+            var connection = new Connection(Address);
+            var session = new Session(connection);
+            var receiver = new ReceiverLink(session, "receiver0", name);
+
+            Message message = receiver.Receive();
+            Message copy = Message.Decode(message.Encode());
+
+            Assert.AreEqual((message.BodySection as AmqpValue).Value, (copy.BodySection as AmqpValue).Value);
+        }
 
         public static X509Certificate2 GetCertificate(StoreLocation storeLocation, StoreName storeName, string certFindValue)
         {

@@ -15,45 +15,40 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------------------
 
-namespace Amqp.Framing
+namespace Amqp.Handler
 {
-    using Amqp.Types;
+    using Amqp.Framing;
 
     /// <summary>
-    /// The released outcome is a terminal delivery state.
+    /// A delivery contains the state for transfering a message.
+    /// The properties must not be changed on a received delivery.
+    /// between nodes.
     /// </summary>
-    public sealed class Released : Outcome
+    public interface IDelivery
     {
         /// <summary>
-        /// Initializes a released object.
+        /// Gets or sets the delivery tag.
         /// </summary>
-        public Released()
-            : base(Codec.Released, 0)
-        {
-        }
-        
-        internal override void WriteField(ByteBuffer buffer, int index)
-        {
-            Fx.Assert(false, "Invalid field index");
-        }
+        byte[] Tag { get; set; }
 
-        internal override void ReadField(ByteBuffer buffer, int index, byte formatCode)
-        {
-            Fx.Assert(false, "Invalid field index");
-        }
-
-#if TRACE
         /// <summary>
-        /// Returns a string that represents the current released object.
+        /// Gets or sets the delivery state.
         /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            return this.GetDebugString(
-                "released",
-                new object[0],
-                new object[0]);
-        }
-#endif
+        DeliveryState State { get; set; }
+
+        /// <summary>
+        /// Gets or sets the batchable field.
+        /// </summary>
+        bool Batchable { get; set; }
+
+        /// <summary>
+        /// Gets the user state object if set in the send method.
+        /// </summary>
+        object UserToken { get; }
+        
+        /// <summary>
+        /// Gets or sets the Settled field.
+        /// </summary>
+        bool Settled { get; set; }
     }
 }

@@ -18,13 +18,16 @@
 namespace Amqp.Types
 {
     using System;
+    using Amqp.Framing;
+    using Amqp.Sasl;
 
     /// <summary>
     /// The DescribedList class consist of a descriptor and an AMQP list.
     /// </summary>
     public abstract class DescribedList : RestrictedDescribed
     {
-        readonly object[] fields;
+        readonly int fieldCount;
+        int fields; // bitmask that stores an 'is null' flag for each field
 
         /// <summary>
         /// Initializes the described list object.
@@ -34,32 +37,405 @@ namespace Amqp.Types
         protected DescribedList(Descriptor descriptor, int fieldCount)
             : base(descriptor)
         {
-            this.fields = new object[fieldCount];
+            if (fieldCount > 32)
+            {
+                throw new NotSupportedException("Maximum number of fields allowed is 32.");
+            }
+
+            this.fieldCount = fieldCount;
+        }
+        
+        /// <summary>
+        /// Examines the list to check if a field is set.
+        /// </summary>
+        /// <param name="index">Zero-based offset of the field in the list.</param>
+        /// <returns>True if a value is set; otherwise false.</returns>
+        /// <remarks>The field index can be found in the description of each field.</remarks>
+        public bool HasField(int index)
+        {
+            this.CheckFieldIndex(index);
+            return (this.fields & (1 << index)) > 0;
         }
 
         /// <summary>
-        /// Gets the array of all fields.
+        /// Resets the value of a field to null.
         /// </summary>
-        protected object[] Fields
+        /// <param name="index">Zero-based offset of the field in the list.</param>
+        /// <remarks>The field index can be found in the description of each field.</remarks>
+        public void ResetField(int index)
         {
-            get { return this.fields; }
+            this.CheckFieldIndex(index);
+            this.fields &= ~(1 << index);
         }
+
+#if NETMF
+        #region non-generic NETMF setter / getter
+        internal void SetField(int index, ref uint field, uint value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref ushort field, ushort value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref bool field, bool value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref ulong field, ulong value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref byte field, byte value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref string field, string value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref byte[] field, byte[] value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref Outcome field, Outcome value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref Map field, Map value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref ReceiverSettleMode field, ReceiverSettleMode value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref SenderSettleMode field, SenderSettleMode value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref DeliveryState field, DeliveryState value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref Error field, Error value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref Fields field, Fields value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref DateTime field, DateTime value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref Symbol field, Symbol value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref SaslCode field, SaslCode value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal void SetField(int index, ref object field, object value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal uint GetField(int index, uint field, uint defaultValue = default(uint))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal ushort GetField(int index, ushort field, ushort defaultValue = default(ushort))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal bool GetField(int index, bool field, bool defaultValue = default(bool))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal byte GetField(int index, byte field, byte defaultValue = default(byte))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal ulong GetField(int index, ulong field, ulong defaultValue = default(ulong))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal string GetField(int index, string field, string defaultValue = default(string))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal byte[] GetField(int index, byte[] field, byte[] defaultValue = default(byte[]))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal Outcome GetField(int index, Outcome field, Outcome defaultValue = default(Outcome))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal Fields GetField(int index, Fields field, Fields defaultValue = default(Fields))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal Map GetField(int index, Map field, Map defaultValue = default(Map))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal ReceiverSettleMode GetField(int index, ReceiverSettleMode field, ReceiverSettleMode defaultValue = default(ReceiverSettleMode))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal SenderSettleMode GetField(int index, SenderSettleMode field, SenderSettleMode defaultValue = default(SenderSettleMode))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal DeliveryState GetField(int index, DeliveryState field, DeliveryState defaultValue = default(DeliveryState))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal Error GetField(int index, Error field, Error defaultValue = default(Error))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal DateTime GetField(int index, DateTime field, DateTime defaultValue = default(DateTime))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal Symbol GetField(int index, Symbol field, Symbol defaultValue = default(Symbol))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal SaslCode GetField(int index, SaslCode field, SaslCode defaultValue = default(SaslCode))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        internal object GetField(int index, object field, object defaultValue = default(object))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+
+        #endregion
+#else
+        internal void SetField<T>(int index, ref T field, T value)
+        {
+            this.fields |= (1 << index);
+            field = value;
+        }
+
+        internal T GetField<T>(int index, T field, T defaultValue = default(T))
+        {
+            if ((this.fields & (1 << index)) == 0)
+            {
+                return defaultValue;
+            }
+
+            return field;
+        }
+#endif
 
         internal override void DecodeValue(ByteBuffer buffer)
         {
-            var list = Encoder.ReadList(buffer, Encoder.ReadFormatCode(buffer));
-            int count = list.Count < this.fields.Length ? list.Count : this.fields.Length;
+            byte formatCode = Encoder.ReadFormatCode(buffer);
+            int size;
+            int count;
+            Encoder.ReadListCount(buffer, formatCode, out size, out count);
             for (int i = 0; i < count; i++)
             {
-                this.fields[i] = list[i];
+                formatCode = Encoder.ReadFormatCode(buffer);
+                if (formatCode != FormatCode.Null)
+                {
+                    this.ReadField(buffer, i, formatCode);
+                    this.fields |= (1 << i);
+                }
             }
         }
 
+        internal abstract void WriteField(ByteBuffer buffer, int index);
+
+        internal abstract void ReadField(ByteBuffer buffer, int index, byte formatCode);
+        
+
         internal override void EncodeValue(ByteBuffer buffer)
         {
-            Encoder.WriteList(buffer, this.fields, true);
-        }
+            if (this.fields == 0)
+            {
+                AmqpBitConverter.WriteUByte(buffer, FormatCode.List0);
+            }
+            else
+            {
+                // Count non-null fields by removing leading zeros
+                int count = 0;
+                int temp = this.fields;
+                while (temp > 0)
+                {
+                    count++;
+                    temp <<= 1;
+                }
 
+                count = 32 - count;
+                int pos = buffer.WritePos;
+                AmqpBitConverter.WriteUByte(buffer, 0);
+                AmqpBitConverter.WriteULong(buffer, 0);
+                for (int i = 0; i < count; i++)
+                {
+                    if ((this.fields & (1 << i)) > 0)
+                    {
+                        this.WriteField(buffer, i);
+                    }
+                    else
+                    {
+                        AmqpBitConverter.WriteUByte(buffer, FormatCode.Null);
+                    }
+                }
+
+                Encoder.WriteListCount(buffer, pos, count, true);
+            }
+        }
+        
 #if TRACE
         /// <summary>
         /// Returns a string representing the current object for tracing purpose.
@@ -95,5 +471,14 @@ namespace Amqp.Types
             return sb.ToString();
         }
 #endif
+
+        void CheckFieldIndex(int index)
+        {
+            if (index < 0 || index >= this.fieldCount)
+            {
+                throw new ArgumentOutOfRangeException(Fx.Format("Field index is invalid. {0} has {1} fields.",
+                    this.GetType().Name, this.fieldCount));
+            }
+        }
     }
 }

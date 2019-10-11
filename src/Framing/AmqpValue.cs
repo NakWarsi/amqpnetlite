@@ -87,6 +87,10 @@ namespace Amqp.Framing
             {
                 Encoder.WriteBinaryBuffer(buffer, byteBuffer);
             }
+            else if (this.valueBuffer != null && !this.valueDecoded)
+            {
+                AmqpBitConverter.WriteBytes(buffer, this.valueBuffer.Buffer, this.valueBuffer.Offset, this.valueBuffer.Length);
+            }
             else
             {
                 this.WriteValue(buffer, this.value);

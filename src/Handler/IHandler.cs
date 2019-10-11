@@ -15,45 +15,24 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------------------
 
-namespace Amqp.Framing
+namespace Amqp.Handler
 {
-    using Amqp.Types;
-
     /// <summary>
-    /// The released outcome is a terminal delivery state.
+    /// A handler to receive protocol events.
     /// </summary>
-    public sealed class Released : Outcome
+    public interface IHandler
     {
         /// <summary>
-        /// Initializes a released object.
+        /// Checks if the handler can handle a given event.
         /// </summary>
-        public Released()
-            : base(Codec.Released, 0)
-        {
-        }
-        
-        internal override void WriteField(ByteBuffer buffer, int index)
-        {
-            Fx.Assert(false, "Invalid field index");
-        }
+        /// <param name="id">The <see cref="EventId"/>.</param>
+        /// <returns>true if the event can be handled; false otherwise.</returns>
+        bool CanHandle(EventId id);
 
-        internal override void ReadField(ByteBuffer buffer, int index, byte formatCode)
-        {
-            Fx.Assert(false, "Invalid field index");
-        }
-
-#if TRACE
         /// <summary>
-        /// Returns a string that represents the current released object.
+        /// Handles a protocol event.
         /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            return this.GetDebugString(
-                "released",
-                new object[0],
-                new object[0]);
-        }
-#endif
+        /// <param name="protocolEvent">The procotol event.</param>
+        void Handle(Event protocolEvent);
     }
 }

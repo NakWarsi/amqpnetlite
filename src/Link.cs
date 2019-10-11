@@ -19,6 +19,7 @@ namespace Amqp
 {
     using System;
     using Amqp.Framing;
+    using Amqp.Handler;
 
     enum LinkState
     {
@@ -43,6 +44,7 @@ namespace Amqp
         readonly OnAttached onAttached;
         LinkState state;
         bool detach;
+        private readonly object lockObject = new object();
 
         /// <summary>
         /// Initializes the link.
@@ -95,7 +97,7 @@ namespace Amqp
 
         internal object ThisLock
         {
-            get { return this; }
+            get { return this.lockObject; }
         }
 
         internal bool IsDetaching
@@ -138,6 +140,12 @@ namespace Amqp
 
         internal virtual void OnAttach(uint remoteHandle, Attach attach)
         {
+            IHandler handler = this.session.Connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.LinkRemoteOpen))
+            {
+                handler.Handle(Event.Create(EventId.LinkRemoteOpen, this.session.Connection, this.session, this, context: attach));
+            }
+
             lock (this.ThisLock)
             {
                 if (this.state == LinkState.AttachSent)
@@ -163,6 +171,12 @@ namespace Amqp
 
         internal bool OnDetach(Detach detach)
         {
+            IHandler handler = this.session.Connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.LinkRemoteClose))
+            {
+                handler.Handle(Event.Create(EventId.LinkRemoteClose, this.session.Connection, this.session, this, context: detach));
+            }
+
             Error remoteError = detach.Error;
             if (remoteError == null && this.detach && detach.Closed)
             {
@@ -272,6 +286,12 @@ namespace Amqp
                 attach.InitialDeliveryCount = initialDeliveryCount;
             }
 
+            IHandler handler = this.session.Connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.LinkLocalOpen))
+            {
+                handler.Handle(Event.Create(EventId.LinkLocalOpen, this.session.Connection, this.session, this, context: attach));
+            }
+
             this.session.SendCommand(attach);
         }
 
@@ -290,6 +310,12 @@ namespace Amqp
         void SendDetach(Error error)
         {
             Detach detach = new Detach() { Handle = this.handle, Error = error, Closed = !this.detach };
+            IHandler handler = this.session.Connection.Handler;
+            if (handler != null && handler.CanHandle(EventId.LinkLocalClose))
+            {
+                handler.Handle(Event.Create(EventId.LinkLocalClose, this.session.Connection, this.session, this, context: detach));
+            }
+
             this.session.SendCommand(detach);
         }
     }

@@ -1,7 +1,4 @@
-﻿//  ------------------------------------------------------------------------------------
-//  Copyright (c) Microsoft Corporation
-//  All rights reserved. 
-//  
+//  ------------------------------------------------------------------------------------
 //  Licensed under the Apache License, Version 2.0 (the ""License""); you may not use this 
 //  file except in compliance with the License. You may obtain a copy of the License at 
 //  http://www.apache.org/licenses/LICENSE-2.0  
@@ -15,15 +12,28 @@
 //  limitations under the License.
 //  ------------------------------------------------------------------------------------
 
-using System.Reflection;
+using System;
+using Amqp.Handler;
 
-// Version information for an assembly consists of the following four values:
-//
-//      Major Version
-//      Minor Version 
-//      Build Number
-//      Revision
-//
-[assembly: AssemblyVersion("2.1.0")]
-[assembly: AssemblyFileVersion("2.2.0")]
-[assembly: AssemblyInformationalVersion("2.2.0")]
+namespace Test.Amqp
+{
+    public class TestHandler : IHandler
+    {
+        readonly Action<Event> action;
+
+        public TestHandler(Action<Event> action)
+        {
+            this.action = action;
+        }
+
+        bool IHandler.CanHandle(EventId id)
+        {
+            return true;
+        }
+
+        void IHandler.Handle(Event protocolEvent)
+        {
+            this.action(protocolEvent);
+        }
+    }
+}

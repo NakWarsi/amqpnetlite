@@ -25,6 +25,9 @@ namespace Amqp.Sasl
     /// </summary>
     public class SaslOutcome : DescribedList
     {
+        SaslCode code;
+        byte[] additionalData;
+
         /// <summary>
         /// Initializes a SaslOutcome object.
         /// </summary>
@@ -34,23 +37,55 @@ namespace Amqp.Sasl
         }
 
         /// <summary>
-        /// Gets or sets the outcome of the sasl dialog.
+        /// Gets or sets the outcome of the sasl dialog (index=0).
         /// </summary>
         public SaslCode Code
         {
-            get { return (SaslCode)this.Fields[0]; }
-            set { this.Fields[0] = (byte)value; }
+            get { return this.GetField(0, this.code); }
+            set { this.SetField(0, ref this.code, value); }
         }
 
         /// <summary>
-        /// Gets or sets the additional data as specified in RFC-4422.
+        /// Gets or sets the additional data as specified in RFC-4422 (index=1).
         /// </summary>
         public byte[] AdditionalData
         {
-            get { return (byte[])this.Fields[1]; }
-            set { this.Fields[1] = value; }
+            get { return this.GetField(1, this.additionalData); }
+            set { this.SetField(1, ref this.additionalData, value); }
         }
 
+        internal override void WriteField(ByteBuffer buffer, int index)
+        {
+            switch (index)
+            {
+                case 0:
+                    Encoder.WriteUByte(buffer, (byte)this.code);
+                    break;
+                case 1:
+                    Encoder.WriteBinary(buffer, this.additionalData, true);
+                    break;
+                default:
+                    Fx.Assert(false, "Invalid field index");
+                    break;
+            }
+        }
+
+        internal override void ReadField(ByteBuffer buffer, int index, byte formatCode)
+        {
+            switch (index)
+            {
+                case 0:
+                    this.code = (SaslCode)Encoder.ReadUByte(buffer, formatCode);
+                    break;
+                case 1:
+                    this.additionalData = Encoder.ReadBinary(buffer, formatCode);
+                    break;
+                default:
+                    Fx.Assert(false, "Invalid field index");
+                    break;
+            }
+        }
+        
 #if TRACE
         /// <summary>
         /// Returns a string that represents the current SASL outcome object.
@@ -60,7 +95,7 @@ namespace Amqp.Sasl
             return this.GetDebugString(
                 "sasl-outcome",
                 new object[] { "code", "additional-data" },
-                this.Fields);
+                new object[] { code, additionalData });
         }
 #endif
     }

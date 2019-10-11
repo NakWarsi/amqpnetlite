@@ -19,38 +19,98 @@ namespace Amqp.Framing
 {
     using Amqp.Types;
 
-    sealed class Detach : DescribedList
+    /// <summary>
+    /// The Detach class contains parameters to detach the link endpoint from the session.
+    /// </summary>
+    public sealed class Detach : DescribedList
     {
+        uint handle;
+        bool closed;
+        Error error;
+
+        /// <summary>
+        /// Initializes a Detach object.
+        /// </summary>
         public Detach()
             : base(Codec.Detach, 3)
         {
         }
 
+        /// <summary>
+        /// Gets or sets the handle field (index=0).
+        /// </summary>
         public uint Handle
         {
-            get { return this.Fields[0] == null ? uint.MinValue : (uint)this.Fields[0]; }
-            set { this.Fields[0] = value; }
+            get { return this.GetField(0, this.handle, uint.MinValue); }
+            set { this.SetField(0, ref this.handle, value); }
         }
 
+        /// <summary>
+        /// Gets or sets the closed field (index=1).
+        /// </summary>
         public bool Closed
         {
-            get { return this.Fields[1] == null ? false : (bool)this.Fields[1]; }
-            set { this.Fields[1] = value; }
+            get { return this.GetField(1, this.closed, false); }
+            set { this.SetField(1, ref this.closed, value); }
         }
 
+        /// <summary>
+        /// Gets or sets the error field (index=2).
+        /// </summary>
         public Error Error
         {
-            get { return (Error)this.Fields[2]; }
-            set { this.Fields[2] = value; }
+            get { return this.GetField(2, this.error); }
+            set { this.SetField(2, ref this.error, value); }
         }
 
+        internal override void WriteField(ByteBuffer buffer, int index)
+        {
+            switch (index)
+            {
+                case 0:
+                    Encoder.WriteUInt(buffer, this.handle, true);
+                    break;
+                case 1:
+                    Encoder.WriteBoolean(buffer, this.closed, true);
+                    break;
+                case 2:
+                    Encoder.WriteObject(buffer, this.error, true);
+                    break;
+                default:
+                    Fx.Assert(false, "Invalid field index");
+                    break;
+            }
+        }
+
+        internal override void ReadField(ByteBuffer buffer, int index, byte formatCode)
+        {
+            switch (index)
+            {
+                case 0:
+                    this.handle = Encoder.ReadUInt(buffer, formatCode);
+                    break;
+                case 1:
+                    this.closed = Encoder.ReadBoolean(buffer, formatCode);
+                    break;
+                case 2:
+                    this.error = (Error)Encoder.ReadObject(buffer, formatCode);
+                    break;
+                default:
+                    Fx.Assert(false, "Invalid field index");
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Returns a string that represents the current begin object.
+        /// </summary>
         public override string ToString()
         {
 #if TRACE
             return this.GetDebugString(
                 "detach",
                 new object[] { "handle", "closed", "error" },
-                this.Fields);
+                new object[] { handle, closed, error });
 #else
             return base.ToString();
 #endif
